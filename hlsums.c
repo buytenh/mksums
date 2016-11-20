@@ -234,10 +234,18 @@ static void make_hardlinks(struct iv_avl_tree *hashes)
 
 	iv_avl_tree_for_each (an, hashes) {
 		struct hash *h;
+		char dispbuf[50];
+		int i;
 		char *linkto;
 		struct iv_list_head *lh;
 
 		h = iv_container_of(an, struct hash, an);
+
+		strcpy(dispbuf, "\rmerging ");
+		for (i = 0; i < 20; i++)
+			sprintf(dispbuf + 2 * i + 9, "%.2x", h->hash[i]);
+
+		fputs(dispbuf, stderr);
 
 		linkto = NULL;
 		iv_list_for_each (lh, &h->dentries) {
@@ -253,6 +261,8 @@ static void make_hardlinks(struct iv_avl_tree *hashes)
 			try_link(d->name, linkto);
 		}
 	}
+
+	fprintf(stderr, "\rmerging done                                    \n");
 }
 
 static void free_hashes(struct iv_avl_tree *hashes)
