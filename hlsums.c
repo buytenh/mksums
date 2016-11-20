@@ -215,17 +215,15 @@ static void try_link(char *from, char *to)
 	static const char *tempfile = "zufequohshuel8Aihoovie9ooMiegiiJ";
 	int ret;
 
-	printf("linking %s to %s\n", from, to);
-
 	ret = link(to, tempfile);
 	if (ret < 0) {
-		perror("link");
+		fprintf(stderr, "linking %s: %s\n", to, strerror(errno));
 		return;
 	}
 
 	ret = rename(tempfile, from);
 	if (ret < 0)
-		perror("rename");
+		fprintf(stderr, "renaming %s: %s\n", from, strerror(errno));
 
 	unlink(tempfile);
 }
