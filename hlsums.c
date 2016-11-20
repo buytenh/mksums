@@ -231,6 +231,32 @@ static void make_hardlinks(void)
 	}
 }
 
+static void free_hashes(struct iv_avl_tree *hashes)
+{
+	struct iv_avl_node *an;
+	struct iv_avl_node *an2;
+
+	iv_avl_tree_for_each_safe (an, an2, hashes) {
+		struct hash *h;
+		struct iv_list_head *lh;
+		struct iv_list_head *lh2;
+
+		h = iv_container_of(an, struct hash, an);
+
+		iv_list_for_each_safe (lh, lh2, &h->dentries) {
+			struct dentry *d;
+
+			d = iv_container_of(lh, struct dentry, list);
+
+			iv_list_del(&d->list);
+			free(d);
+		}
+
+		iv_avl_tree_delete(hashes, &h->an);
+		free(h);
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	int i;
@@ -244,6 +270,9 @@ int main(int argc, char *argv[])
 	}
 
 	make_hardlinks();
+
+	free_hashes(&hash_single);
+	free_hashes(&hash_multiple);
 
 	return 0;
 }
