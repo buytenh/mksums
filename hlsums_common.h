@@ -37,6 +37,9 @@ struct dentry
 	char			name[0];
 };
 
+/* make_hardlinks.c */
+void make_hardlinks(struct iv_avl_tree *hashes);
+
 /* read_sum_files.c */
 int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[]);
 
