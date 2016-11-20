@@ -107,6 +107,19 @@ static struct hash *find_hash(struct iv_avl_tree *tree, uint8_t *hash)
 	return NULL;
 }
 
+static void add_dentry(struct hash *h, char *name, int namelen)
+{
+	struct dentry *d;
+
+	d = malloc(sizeof(*d) + namelen + 1);
+	if (d == NULL)
+		abort();
+
+	strcpy(d->name, name);
+
+	iv_list_add_tail(&d->list, &h->dentries);
+}
+
 
 static struct iv_avl_tree hash_single;
 static struct iv_avl_tree hash_multiple;
@@ -125,7 +138,6 @@ static int read_sum_file(char *file)
 		char line[2048];
 		int len;
 		uint8_t hash[20];
-		struct dentry *d;
 		struct hash *h;
 
 		if (fgets(line, sizeof(line), fp) == NULL) {
@@ -145,15 +157,9 @@ static int read_sum_file(char *file)
 			continue;
 		}
 
-		d = malloc(sizeof(*d) + len - 42 + 1);
-		if (d == NULL)
-			abort();
-
-		strcpy(d->name, line + 42);
-
 		h = find_hash(&hash_multiple, hash);
 		if (h != NULL) {
-			iv_list_add_tail(&d->list, &h->dentries);
+			add_dentry(h, line + 42, len - 42);
 			continue;
 		}
 
@@ -161,7 +167,7 @@ static int read_sum_file(char *file)
 		if (h != NULL) {
 			iv_avl_tree_delete(&hash_single, &h->an);
 			iv_avl_tree_insert(&hash_multiple, &h->an);
-			iv_list_add_tail(&d->list, &h->dentries);
+			add_dentry(h, line + 42, len - 42);
 			continue;
 		}
 
@@ -173,7 +179,7 @@ static int read_sum_file(char *file)
 		INIT_IV_LIST_HEAD(&h->dentries);
 		iv_avl_tree_insert(&hash_single, &h->an);
 
-		iv_list_add_tail(&d->list, &h->dentries);
+		add_dentry(h, line + 42, len - 42);
 	}
 
 	fclose(fp);
