@@ -131,74 +131,79 @@ struct hash_1ref
 	char			name[0];
 };
 
-static int read_sum_file(char *file)
+static int read_sum_files(int num_files, char *file[])
 {
-	FILE *fp;
+	int i;
 
-	fp = fopen(file, "r");
-	if (fp == NULL) {
-		perror("fopen");
-		return 1;
-	}
+	for (i = 0; i < num_files; i++) {
+		FILE *fp;
 
-	while (1) {
-		char line[2048];
-		int len;
-		uint8_t hash[20];
-		struct hash *h;
-		struct hash_1ref *h1;
+		fp = fopen(file[i], "r");
+		if (fp == NULL) {
+			perror("fopen");
+			return 1;
+		}
 
-		if (fgets(line, sizeof(line), fp) == NULL) {
-			if (!feof(fp)) {
-				perror("fgets");
-				return 1;
+		while (1) {
+			char line[2048];
+			int len;
+			uint8_t hash[20];
+			struct hash *h;
+			struct hash_1ref *h1;
+
+			if (fgets(line, sizeof(line), fp) == NULL) {
+				if (!feof(fp)) {
+					perror("fgets");
+					return 1;
+				}
+				break;
 			}
-			break;
-		}
 
-		len = strlen(line);
-		if (len && line[len - 1] == '\n')
-			line[--len] = 0;
+			len = strlen(line);
+			if (len && line[len - 1] == '\n')
+				line[--len] = 0;
 
-		if (len < 43 || parse_hash(hash, line)) {
-			fprintf(stderr, "error parsing line: %s\n", line);
-			continue;
-		}
+			if (len < 43 || parse_hash(hash, line)) {
+				fprintf(stderr, "error parsing line: %s\n",
+					line);
+				continue;
+			}
 
-		h = find_hash(&hash_multiple, hash);
-		if (h != NULL) {
-			add_dentry(h, line + 42, len - 42);
-			continue;
-		}
+			h = find_hash(&hash_multiple, hash);
+			if (h != NULL) {
+				add_dentry(h, line + 42, len - 42);
+				continue;
+			}
 
-		h1 = (struct hash_1ref *)find_hash(&hash_1ref, hash);
-		if (h1 != NULL) {
-			h = malloc(sizeof(*h));
-			if (h == NULL)
+			h1 = (struct hash_1ref *)find_hash(&hash_1ref, hash);
+			if (h1 != NULL) {
+				h = malloc(sizeof(*h));
+				if (h == NULL)
+					abort();
+				memcpy(h->hash, hash, 20);
+				INIT_IV_LIST_HEAD(&h->dentries);
+				iv_avl_tree_insert(&hash_multiple, &h->an);
+
+				add_dentry(h, h1->name, strlen(h1->name));
+				add_dentry(h, line + 42, len - 42);
+
+				iv_avl_tree_delete(&hash_1ref, &h1->an);
+				free(h1);
+
+				continue;
+			}
+
+			h1 = malloc(sizeof(*h1) + len - 42 + 1);
+			if (h1 == NULL)
 				abort();
-			memcpy(h->hash, hash, 20);
-			INIT_IV_LIST_HEAD(&h->dentries);
-			iv_avl_tree_insert(&hash_multiple, &h->an);
 
-			add_dentry(h, h1->name, strlen(h1->name));
-			add_dentry(h, line + 42, len - 42);
-
-			iv_avl_tree_delete(&hash_1ref, &h1->an);
-			free(h1);
-
-			continue;
+			memcpy(h1->hash, hash, 20);
+			strcpy(h1->name, line + 42);
+			iv_avl_tree_insert(&hash_1ref, &h1->an);
 		}
 
-		h1 = malloc(sizeof(*h1) + len - 42 + 1);
-		if (h1 == NULL)
-			abort();
-
-		memcpy(h1->hash, hash, 20);
-		strcpy(h1->name, line + 42);
-		iv_avl_tree_insert(&hash_1ref, &h1->an);
+		fclose(fp);
 	}
-
-	fclose(fp);
 
 	return 0;
 }
@@ -280,15 +285,11 @@ static void free_hashes(struct iv_avl_tree *hashes, int free_dentries)
 
 int main(int argc, char *argv[])
 {
-	int i;
-
 	INIT_IV_AVL_TREE(&hash_1ref, compare_hash);
 	INIT_IV_AVL_TREE(&hash_multiple, compare_hash);
 
-	for (i = 1; i < argc; i++) {
-		if (read_sum_file(argv[i]))
-			return 1;
-	}
+	if (read_sum_files(argc - 1, argv + 1))
+		return 1;
 
 	make_hardlinks();
 
