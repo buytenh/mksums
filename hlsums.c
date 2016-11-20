@@ -121,8 +121,15 @@ static void add_dentry(struct hash *h, char *name, int namelen)
 }
 
 
-static struct iv_avl_tree hash_single;
+static struct iv_avl_tree hash_1ref;
 static struct iv_avl_tree hash_multiple;
+
+struct hash_1ref
+{
+	struct iv_avl_node	an;
+	uint8_t			hash[20];
+	char			name[0];
+};
 
 static int read_sum_file(char *file)
 {
@@ -139,6 +146,7 @@ static int read_sum_file(char *file)
 		int len;
 		uint8_t hash[20];
 		struct hash *h;
+		struct hash_1ref *h1;
 
 		if (fgets(line, sizeof(line), fp) == NULL) {
 			if (!feof(fp)) {
@@ -163,23 +171,31 @@ static int read_sum_file(char *file)
 			continue;
 		}
 
-		h = find_hash(&hash_single, hash);
-		if (h != NULL) {
-			iv_avl_tree_delete(&hash_single, &h->an);
+		h1 = (struct hash_1ref *)find_hash(&hash_1ref, hash);
+		if (h1 != NULL) {
+			h = malloc(sizeof(*h));
+			if (h == NULL)
+				abort();
+			memcpy(h->hash, hash, 20);
+			INIT_IV_LIST_HEAD(&h->dentries);
 			iv_avl_tree_insert(&hash_multiple, &h->an);
+
+			add_dentry(h, h1->name, strlen(h1->name));
 			add_dentry(h, line + 42, len - 42);
+
+			iv_avl_tree_delete(&hash_1ref, &h1->an);
+			free(h1);
+
 			continue;
 		}
 
-		h = malloc(sizeof(*h));
-		if (h == NULL)
+		h1 = malloc(sizeof(*h1) + len - 42 + 1);
+		if (h1 == NULL)
 			abort();
 
-		memcpy(h->hash, hash, 20);
-		INIT_IV_LIST_HEAD(&h->dentries);
-		iv_avl_tree_insert(&hash_single, &h->an);
-
-		add_dentry(h, line + 42, len - 42);
+		memcpy(h1->hash, hash, 20);
+		strcpy(h1->name, line + 42);
+		iv_avl_tree_insert(&hash_1ref, &h1->an);
 	}
 
 	fclose(fp);
@@ -234,7 +250,7 @@ static void make_hardlinks(void)
 	}
 }
 
-static void free_hashes(struct iv_avl_tree *hashes)
+static void free_hashes(struct iv_avl_tree *hashes, int free_dentries)
 {
 	struct iv_avl_node *an;
 	struct iv_avl_node *an2;
@@ -246,13 +262,15 @@ static void free_hashes(struct iv_avl_tree *hashes)
 
 		h = iv_container_of(an, struct hash, an);
 
-		iv_list_for_each_safe (lh, lh2, &h->dentries) {
-			struct dentry *d;
+		if (free_dentries) {
+			iv_list_for_each_safe (lh, lh2, &h->dentries) {
+				struct dentry *d;
 
-			d = iv_container_of(lh, struct dentry, list);
+				d = iv_container_of(lh, struct dentry, list);
 
-			iv_list_del(&d->list);
-			free(d);
+				iv_list_del(&d->list);
+				free(d);
+			}
 		}
 
 		iv_avl_tree_delete(hashes, &h->an);
@@ -264,7 +282,7 @@ int main(int argc, char *argv[])
 {
 	int i;
 
-	INIT_IV_AVL_TREE(&hash_single, compare_hash);
+	INIT_IV_AVL_TREE(&hash_1ref, compare_hash);
 	INIT_IV_AVL_TREE(&hash_multiple, compare_hash);
 
 	for (i = 1; i < argc; i++) {
@@ -274,8 +292,8 @@ int main(int argc, char *argv[])
 
 	make_hardlinks();
 
-	free_hashes(&hash_single);
-	free_hashes(&hash_multiple);
+	free_hashes(&hash_1ref, 0);
+	free_hashes(&hash_multiple, 1);
 
 	return 0;
 }
