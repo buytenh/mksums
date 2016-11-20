@@ -122,8 +122,6 @@ static void add_dentry(struct hash *h, char *name, int namelen)
 }
 
 
-static struct iv_avl_tree hash_multiple;
-
 struct hash_1ref
 {
 	struct iv_avl_node	an;
@@ -131,10 +129,12 @@ struct hash_1ref
 	char			name[0];
 };
 
-static int read_sum_files(int num_files, char *file[])
+static int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[])
 {
 	struct iv_avl_tree hash_1ref;
 	int i;
+
+	INIT_IV_AVL_TREE(dst, compare_hash);
 
 	INIT_IV_AVL_TREE(&hash_1ref, compare_hash);
 
@@ -172,7 +172,7 @@ static int read_sum_files(int num_files, char *file[])
 				continue;
 			}
 
-			h = find_hash(&hash_multiple, hash);
+			h = find_hash(dst, hash);
 			if (h != NULL) {
 				add_dentry(h, line + 42, len - 42);
 				continue;
@@ -185,7 +185,7 @@ static int read_sum_files(int num_files, char *file[])
 					abort();
 				memcpy(h->hash, hash, 20);
 				INIT_IV_LIST_HEAD(&h->dentries);
-				iv_avl_tree_insert(&hash_multiple, &h->an);
+				iv_avl_tree_insert(dst, &h->an);
 
 				add_dentry(h, h1->name, strlen(h1->name));
 				add_dentry(h, line + 42, len - 42);
@@ -297,9 +297,7 @@ int main(int argc, char *argv[])
 		setrlimit(RLIMIT_STACK, &rlim);
 	}
 
-	INIT_IV_AVL_TREE(&hash_multiple, compare_hash);
-
-	if (read_sum_files(argc - 1, argv + 1))
+	if (read_sum_files(&hash_multiple, argc - 1, argv + 1))
 		return 1;
 
 	make_hardlinks();
