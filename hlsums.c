@@ -172,7 +172,7 @@ static int read_sum_file(char *file)
 
 		d = malloc(sizeof(*d) + len - 42 + 1);
 		if (d == NULL)
-			return 1;
+			abort();
 
 		strcpy(d->name, line + 42);
 
