@@ -29,7 +29,8 @@ struct fh_ref
 	struct file_to_hash	*fh;
 };
 
-static int compare_fh_refs(struct iv_avl_node *_a, struct iv_avl_node *_b)
+static int
+compare_fh_refs(const struct iv_avl_node *_a, const struct iv_avl_node *_b)
 {
 	const struct fh_ref *a = iv_container_of(_a, struct fh_ref, an);
 	const struct fh_ref *b = iv_container_of(_b, struct fh_ref, an);

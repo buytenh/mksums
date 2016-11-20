@@ -60,7 +60,8 @@ struct temp_dir_entry
 	};
 };
 
-static int compare_dirs_to_scan(struct iv_avl_node *_a, struct iv_avl_node *_b)
+static int compare_dirs_to_scan(const struct iv_avl_node *_a,
+				const struct iv_avl_node *_b)
 {
 	const struct dir_to_scan *a;
 	const struct dir_to_scan *b;
@@ -109,8 +110,8 @@ static struct dir_to_scan *pick_dir(struct scan_state *st)
 	return ds;
 }
 
-static int
-compare_temp_dir_entries(struct iv_avl_node *_a, struct iv_avl_node *_b)
+static int compare_temp_dir_entries(const struct iv_avl_node *_a,
+				    const struct iv_avl_node *_b)
 {
 	const struct temp_dir_entry *a;
 	const struct temp_dir_entry *b;
