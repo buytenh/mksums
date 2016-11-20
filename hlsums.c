@@ -230,11 +230,11 @@ static void try_link(char *from, char *to)
 	unlink(tempfile);
 }
 
-static void make_hardlinks(void)
+static void make_hardlinks(struct iv_avl_tree *hashes)
 {
 	struct iv_avl_node *an;
 
-	iv_avl_tree_for_each (an, &hash_multiple) {
+	iv_avl_tree_for_each (an, hashes) {
 		struct hash *h;
 		char *linkto;
 		struct iv_list_head *lh;
@@ -286,6 +286,7 @@ static void free_hashes(struct iv_avl_tree *hashes)
 int main(int argc, char *argv[])
 {
 	struct rlimit rlim;
+	struct iv_avl_tree hashes;
 
 	if (getrlimit(RLIMIT_STACK, &rlim) < 0) {
 		perror("getrlimit(RLIMIT_STACK)");
@@ -297,12 +298,12 @@ int main(int argc, char *argv[])
 		setrlimit(RLIMIT_STACK, &rlim);
 	}
 
-	if (read_sum_files(&hash_multiple, argc - 1, argv + 1))
+	if (read_sum_files(&hashes, argc - 1, argv + 1))
 		return 1;
 
-	make_hardlinks();
+	make_hardlinks(&hashes);
 
-	free_hashes(&hash_multiple);
+	free_hashes(&hashes);
 
 	return 0;
 }
