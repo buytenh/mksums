@@ -17,8 +17,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef __READ_SUM_FILES_H
-#define __READ_SUM_FILES_H
+#ifndef __HLSUMS_COMMON_H
+#define __HLSUMS_COMMON_H
 
 #include <iv_avl.h>
 #include <iv_list.h>
@@ -37,6 +37,7 @@ struct dentry
 	char			name[0];
 };
 
+/* read_sum_files.c */
 int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[]);
 
 

@@ -22,7 +22,7 @@
 #include <iv_avl.h>
 #include <iv_list.h>
 #include <string.h>
-#include "read_sum_files.h"
+#include "hlsums_common.h"
 
 static int
 compare_hash(const struct iv_avl_node *_a, const struct iv_avl_node *_b)

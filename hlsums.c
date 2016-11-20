@@ -27,7 +27,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "read_sum_files.h"
+#include "hlsums_common.h"
 
 struct hash_group
 {
