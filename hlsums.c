@@ -38,7 +38,8 @@ struct dentry
 	char			name[0];
 };
 
-static int compare_hashes(struct iv_avl_node *_a, struct iv_avl_node *_b)
+static int
+compare_hash(const struct iv_avl_node *_a, const struct iv_avl_node *_b)
 {
 	const struct hash *a = iv_container_of(_a, struct hash, an);
 	const struct hash *b = iv_container_of(_b, struct hash, an);
@@ -234,8 +235,8 @@ int main(int argc, char *argv[])
 {
 	int i;
 
-	INIT_IV_AVL_TREE(&hash_single, compare_hashes);
-	INIT_IV_AVL_TREE(&hash_multiple, compare_hashes);
+	INIT_IV_AVL_TREE(&hash_single, compare_hash);
+	INIT_IV_AVL_TREE(&hash_multiple, compare_hash);
 
 	for (i = 1; i < argc; i++) {
 		if (read_sum_file(argv[i]))
