@@ -122,7 +122,6 @@ static void add_dentry(struct hash *h, char *name, int namelen)
 }
 
 
-static struct iv_avl_tree hash_1ref;
 static struct iv_avl_tree hash_multiple;
 
 struct hash_1ref
@@ -134,7 +133,10 @@ struct hash_1ref
 
 static int read_sum_files(int num_files, char *file[])
 {
+	struct iv_avl_tree hash_1ref;
 	int i;
+
+	INIT_IV_AVL_TREE(&hash_1ref, compare_hash);
 
 	for (i = 0; i < num_files; i++) {
 		FILE *fp;
@@ -189,12 +191,11 @@ static int read_sum_files(int num_files, char *file[])
 				add_dentry(h, line + 42, len - 42);
 
 				iv_avl_tree_delete(&hash_1ref, &h1->an);
-				free(h1);
 
 				continue;
 			}
 
-			h1 = malloc(sizeof(*h1) + len - 42 + 1);
+			h1 = alloca(sizeof(*h1) + len - 42 + 1);
 			if (h1 == NULL)
 				abort();
 
@@ -256,7 +257,7 @@ static void make_hardlinks(void)
 	}
 }
 
-static void free_hashes(struct iv_avl_tree *hashes, int free_dentries)
+static void free_hashes(struct iv_avl_tree *hashes)
 {
 	struct iv_avl_node *an;
 	struct iv_avl_node *an2;
@@ -268,15 +269,13 @@ static void free_hashes(struct iv_avl_tree *hashes, int free_dentries)
 
 		h = iv_container_of(an, struct hash, an);
 
-		if (free_dentries) {
-			iv_list_for_each_safe (lh, lh2, &h->dentries) {
-				struct dentry *d;
+		iv_list_for_each_safe (lh, lh2, &h->dentries) {
+			struct dentry *d;
 
-				d = iv_container_of(lh, struct dentry, list);
+			d = iv_container_of(lh, struct dentry, list);
 
-				iv_list_del(&d->list);
-				free(d);
-			}
+			iv_list_del(&d->list);
+			free(d);
 		}
 
 		iv_avl_tree_delete(hashes, &h->an);
@@ -298,7 +297,6 @@ int main(int argc, char *argv[])
 		setrlimit(RLIMIT_STACK, &rlim);
 	}
 
-	INIT_IV_AVL_TREE(&hash_1ref, compare_hash);
 	INIT_IV_AVL_TREE(&hash_multiple, compare_hash);
 
 	if (read_sum_files(argc - 1, argv + 1))
@@ -306,8 +304,7 @@ int main(int argc, char *argv[])
 
 	make_hardlinks();
 
-	free_hashes(&hash_1ref, 0);
-	free_hashes(&hash_multiple, 1);
+	free_hashes(&hash_multiple);
 
 	return 0;
 }
