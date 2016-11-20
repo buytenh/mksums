@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <iv_avl.h>
 #include <iv_list.h>
-#include "common.h"
+#include "mksums_common.h"
 
 struct fh_ref
 {

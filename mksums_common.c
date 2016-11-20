@@ -27,7 +27,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <unistd.h>
-#include "common.h"
+#include "mksums_common.h"
 
 int openat_try_noatime(int dirfd, const char *pathname, int flags)
 {

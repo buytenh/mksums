@@ -29,7 +29,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "common.h"
+#include "mksums_common.h"
 
 struct scan_state
 {

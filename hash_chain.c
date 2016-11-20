@@ -25,7 +25,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <unistd.h>
-#include "common.h"
+#include "mksums_common.h"
 
 static int hash_file(struct file_to_hash *fh)
 {

@@ -52,17 +52,17 @@ struct file_to_hash
 	char			d_name[0];
 };
 
-/* common.c */
-int openat_try_noatime(int dirfd, const char *pathname, int flags);
-void print_dir_path(FILE *fp, struct dir *dir);
-void free_file_chain(struct iv_list_head *files);
-void run_threads(void *(*handler)(void *), void *cookie, int nthreads);
-
 /* find_hard_links.c */
 void find_hard_links(struct iv_list_head *files);
 
 /* hash_chain.c */
 void hash_chain(struct iv_list_head *files);
+
+/* mksums_common.c */
+int openat_try_noatime(int dirfd, const char *pathname, int flags);
+void print_dir_path(FILE *fp, struct dir *dir);
+void free_file_chain(struct iv_list_head *files);
+void run_threads(void *(*handler)(void *), void *cookie, int nthreads);
 
 /* scan_tree.c */
 int scan_tree(struct iv_list_head *files, char *root_name);

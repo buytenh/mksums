@@ -25,7 +25,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "common.h"
+#include "mksums_common.h"
 
 int main(int argc, char *argv[])
 {
