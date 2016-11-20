@@ -23,6 +23,7 @@
 #include <iv_avl.h>
 #include <iv_list.h>
 #include <string.h>
+#include <sys/resource.h>
 #include <unistd.h>
 
 struct hash
@@ -285,6 +286,18 @@ static void free_hashes(struct iv_avl_tree *hashes, int free_dentries)
 
 int main(int argc, char *argv[])
 {
+	struct rlimit rlim;
+
+	if (getrlimit(RLIMIT_STACK, &rlim) < 0) {
+		perror("getrlimit(RLIMIT_STACK)");
+		return 1;
+	}
+
+	if (rlim.rlim_cur < 536870912 && 536870912 <= rlim.rlim_max) {
+		rlim.rlim_cur = 536870912;
+		setrlimit(RLIMIT_STACK, &rlim);
+	}
+
 	INIT_IV_AVL_TREE(&hash_1ref, compare_hash);
 	INIT_IV_AVL_TREE(&hash_multiple, compare_hash);
 
