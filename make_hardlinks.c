@@ -189,8 +189,10 @@ static void link_hash(struct hash *h)
 
 		ret = stat(d->name, &buf);
 		if (ret < 0) {
-			fprintf(stderr, "stat %s: %s\n", d->name,
-				strerror(errno));
+			if (errno != ENOENT) {
+				fprintf(stderr, "stat %s: %s\n", d->name,
+					strerror(errno));
+			}
 			continue;
 		}
 
