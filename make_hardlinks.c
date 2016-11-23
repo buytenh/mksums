@@ -168,14 +168,53 @@ static void try_link(char *from, char *to)
 	}
 }
 
+static void merge_hash_groups(struct hash *h, struct iv_avl_tree *hash_groups)
+{
+	struct hash_group *hgdest;
+	struct iv_avl_node *an;
+	struct dentry *dto;
+
+	hgdest = find_dest_group(hash_groups);
+	if (hgdest == NULL)
+		return;
+
+	iv_avl_tree_for_each (an, hash_groups) {
+		struct hash_group *hg;
+
+		hg = iv_container_of(an, struct hash_group, an);
+		print_hash_group(hg, hgdest);
+	}
+
+	dto = iv_container_of(hgdest->dentries.next, struct dentry, list);
+	iv_avl_tree_for_each (an, hash_groups) {
+		struct hash_group *hg;
+		struct iv_list_head *lh;
+		struct iv_list_head *lh2;
+
+		hg = iv_container_of(an, struct hash_group, an);
+		if (hg == hgdest)
+			continue;
+
+		iv_list_for_each_safe (lh, lh2, &hg->dentries) {
+			struct dentry *d;
+
+			d = iv_container_of(lh, struct dentry, list);
+			iv_list_del(&d->list);
+
+			try_link(d->name, dto->name);
+
+			iv_list_add_tail(&d->list, &h->dentries);
+		}
+	}
+
+	fprintf(stderr, "\n");
+}
+
 static void link_hash(struct hash *h)
 {
 	struct iv_avl_tree hash_groups;
 	struct iv_list_head *lh;
 	struct iv_list_head *lh2;
-	struct hash_group *hgdest;
-	struct iv_avl_node *an;
-	struct dentry *dto;
 
 	INIT_IV_AVL_TREE(&hash_groups, compare_hash_group);
 
@@ -221,40 +260,9 @@ static void link_hash(struct hash *h)
 		iv_avl_tree_insert(&hash_groups, &hg->an);
 	}
 
-	hgdest = find_dest_group(&hash_groups);
-	if (hgdest == NULL)
-		return;
-
 	fprintf(stderr, "\n");
 
-	iv_avl_tree_for_each (an, &hash_groups) {
-		struct hash_group *hg;
-
-		hg = iv_container_of(an, struct hash_group, an);
-		print_hash_group(hg, hgdest);
-	}
-
-	dto = iv_container_of(hgdest->dentries.next, struct dentry, list);
-	iv_avl_tree_for_each (an, &hash_groups) {
-		struct hash_group *hg;
-
-		hg = iv_container_of(an, struct hash_group, an);
-		if (hg == hgdest)
-			continue;
-
-		iv_list_for_each_safe (lh, lh2, &hg->dentries) {
-			struct dentry *d;
-
-			d = iv_container_of(lh, struct dentry, list);
-			iv_list_del(&d->list);
-
-			try_link(d->name, dto->name);
-
-			iv_list_add_tail(&d->list, &h->dentries);
-		}
-	}
-
-	fprintf(stderr, "\n");
+	merge_hash_groups(h, &hash_groups);
 }
 
 void make_hardlinks(struct iv_avl_tree *hashes)
