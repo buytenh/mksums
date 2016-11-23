@@ -209,6 +209,7 @@ static void try_link(char *from, char *to)
 static void merge_hash_groups(struct hash *h, struct iv_avl_tree *hash_groups)
 {
 	struct hash_group *hgdest;
+	int printed_hgdest;
 	struct dentry *dto;
 	struct iv_avl_node *an;
 	struct iv_avl_node *an2;
@@ -217,7 +218,7 @@ static void merge_hash_groups(struct hash *h, struct iv_avl_tree *hash_groups)
 				 iv_container_of(iv_avl_tree_min(hash_groups),
 						 struct hash_group, an));
 
-	print_hash_group(hgdest, hgdest);
+	printed_hgdest = 0;
 
 	dto = iv_container_of(hgdest->dentries.next, struct dentry, list);
 	iv_avl_tree_for_each_safe (an, an2, hash_groups) {
@@ -234,6 +235,10 @@ static void merge_hash_groups(struct hash *h, struct iv_avl_tree *hash_groups)
 		if (hg == hgdest)
 			continue;
 
+		if (!printed_hgdest) {
+			print_hash_group(hgdest, hgdest);
+			printed_hgdest = 1;
+		}
 		print_hash_group(hg, hgdest);
 
 		iv_list_for_each_safe (lh, lh2, &hg->dentries) {
@@ -248,7 +253,8 @@ static void merge_hash_groups(struct hash *h, struct iv_avl_tree *hash_groups)
 		}
 	}
 
-	fprintf(stderr, "\n");
+	if (printed_hgdest)
+		fprintf(stderr, "\n");
 }
 
 static void link_hash(struct hash *h)
