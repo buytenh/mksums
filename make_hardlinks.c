@@ -170,8 +170,8 @@ static void print_hash_group(struct hash_group *hg, struct hash_group *hgdest)
 		(long)hg->st_uid,
 		(long)hg->st_gid,
 		(long long)hg->st_size,
-		(hg == hgdest) ? " dest-group" : "",
-		(hg->st_nlink != hg->num_dentries) ? " missing-refs" : "");
+		(hg == hgdest) ? " <==" : "",
+		(hg->st_nlink != hg->num_dentries) ? " (missing-refs)" : "");
 
 	iv_list_for_each (lh, &hg->dentries) {
 		struct dentry *d;
