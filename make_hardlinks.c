@@ -178,12 +178,7 @@ static void merge_hash_groups(struct hash *h, struct iv_avl_tree *hash_groups)
 	if (hgdest == NULL)
 		return;
 
-	iv_avl_tree_for_each (an, hash_groups) {
-		struct hash_group *hg;
-
-		hg = iv_container_of(an, struct hash_group, an);
-		print_hash_group(hg, hgdest);
-	}
+	print_hash_group(hgdest, hgdest);
 
 	dto = iv_container_of(hgdest->dentries.next, struct dentry, list);
 	iv_avl_tree_for_each (an, hash_groups) {
@@ -194,6 +189,8 @@ static void merge_hash_groups(struct hash *h, struct iv_avl_tree *hash_groups)
 		hg = iv_container_of(an, struct hash_group, an);
 		if (hg == hgdest)
 			continue;
+
+		print_hash_group(hg, hgdest);
 
 		iv_list_for_each_safe (lh, lh2, &hg->dentries) {
 			struct dentry *d;
