@@ -31,6 +31,7 @@
 struct hash_group
 {
 	struct iv_avl_node	an;
+	dev_t			st_dev;
 	ino_t			st_ino;
 	nlink_t			st_nlink;
 	int			num_dentries;
@@ -45,6 +46,11 @@ compare_hash_group(const struct iv_avl_node *_a, const struct iv_avl_node *_b)
 	const struct hash_group *b =
 		iv_container_of(_b, struct hash_group, an);
 
+	if (a->st_dev < b->st_dev)
+		return -1;
+	if (a->st_dev > b->st_dev)
+		return 1;
+
 	if (a->st_ino < b->st_ino)
 		return -1;
 	if (a->st_ino > b->st_ino)
@@ -53,7 +59,8 @@ compare_hash_group(const struct iv_avl_node *_a, const struct iv_avl_node *_b)
 	return 0;
 }
 
-static struct hash_group *find_hash_group(struct iv_avl_tree *tree, ino_t ino)
+static struct hash_group *
+find_hash_group(struct iv_avl_tree *tree, dev_t dev, ino_t ino)
 {
 	struct iv_avl_node *an;
 
@@ -62,10 +69,14 @@ static struct hash_group *find_hash_group(struct iv_avl_tree *tree, ino_t ino)
 		struct hash_group *hg;
 
 		hg = iv_container_of(an, struct hash_group, an);
-		if (ino == hg->st_ino)
+		if (dev == hg->st_dev && ino == hg->st_ino)
 			return hg;
 
-		if (ino < hg->st_ino)
+		if (dev < hg->st_dev)
+			an = an->left;
+		else if (dev > hg->st_dev)
+			an = an->right;
+		else if (ino < hg->st_ino)
 			an = an->left;
 		else
 			an = an->right;
@@ -129,7 +140,8 @@ static void print_hash_group(struct hash_group *hg, struct hash_group *hgdest)
 {
 	struct iv_list_head *lh;
 
-	fprintf(stderr, " ino %ld nlink %ld%s%s\n",
+	fprintf(stderr, " dev %.4lx ino %ld nlink %ld%s%s\n",
+		(long)hg->st_dev,
 		(long)hg->st_ino,
 		(long)hg->st_nlink,
 		(hg == hgdest) ? " dest-group" : "",
@@ -237,7 +249,7 @@ static void link_hash(struct hash *h)
 
 		iv_list_del(&d->list);
 
-		hg = find_hash_group(&hash_groups, buf.st_ino);
+		hg = find_hash_group(&hash_groups, buf.st_dev, buf.st_ino);
 		if (hg != NULL) {
 			hg->num_dentries++;
 			iv_list_add_tail(&d->list, &hg->dentries);
@@ -248,6 +260,7 @@ static void link_hash(struct hash *h)
 		if (hg == NULL)
 			abort();
 
+		hg->st_dev = buf.st_dev;
 		hg->st_ino = buf.st_ino;
 		hg->st_nlink = buf.st_nlink;
 		hg->num_dentries = 1;
