@@ -85,6 +85,14 @@ find_hash_group(struct iv_avl_tree *tree, dev_t dev, ino_t ino)
 	return NULL;
 }
 
+static int hash_groups_mergeable(struct hash_group *a, struct hash_group *b)
+{
+	if (a->st_dev != b->st_dev)
+		return 0;
+
+	return 1;
+}
+
 static int missing(struct hash_group *hg)
 {
 	if (hg->st_nlink < hg->num_dentries)
@@ -97,9 +105,6 @@ static int prefer_hash_group(struct hash_group *a, struct hash_group *b)
 {
 	int missing_a;
 	int missing_b;
-
-	if (b == NULL)
-		return 1;
 
 	missing_a = missing(a);
 	missing_b = missing(b);
@@ -119,16 +124,20 @@ static int prefer_hash_group(struct hash_group *a, struct hash_group *b)
 	return 0;
 }
 
-static struct hash_group *find_dest_group(struct iv_avl_tree *hash_groups)
+static struct hash_group *
+find_dest_group(struct iv_avl_tree *hash_groups, struct hash_group *hgfirst)
 {
 	struct hash_group *hgdest;
 	struct iv_avl_node *an;
 
-	hgdest = NULL;
+	hgdest = hgfirst;
 	iv_avl_tree_for_each (an, hash_groups) {
 		struct hash_group *hg;
 
 		hg = iv_container_of(an, struct hash_group, an);
+		if (!hash_groups_mergeable(hg, hgdest))
+			continue;
+
 		if (prefer_hash_group(hg, hgdest))
 			hgdest = hg;
 	}
@@ -183,22 +192,28 @@ static void try_link(char *from, char *to)
 static void merge_hash_groups(struct hash *h, struct iv_avl_tree *hash_groups)
 {
 	struct hash_group *hgdest;
-	struct iv_avl_node *an;
 	struct dentry *dto;
+	struct iv_avl_node *an;
+	struct iv_avl_node *an2;
 
-	hgdest = find_dest_group(hash_groups);
-	if (hgdest == NULL)
-		return;
+	hgdest = find_dest_group(hash_groups,
+				 iv_container_of(iv_avl_tree_min(hash_groups),
+						 struct hash_group, an));
 
 	print_hash_group(hgdest, hgdest);
 
 	dto = iv_container_of(hgdest->dentries.next, struct dentry, list);
-	iv_avl_tree_for_each (an, hash_groups) {
+	iv_avl_tree_for_each_safe (an, an2, hash_groups) {
 		struct hash_group *hg;
 		struct iv_list_head *lh;
 		struct iv_list_head *lh2;
 
 		hg = iv_container_of(an, struct hash_group, an);
+
+		if (!hash_groups_mergeable(hg, hgdest))
+			continue;
+		iv_avl_tree_delete(hash_groups, an);
+
 		if (hg == hgdest)
 			continue;
 
@@ -272,7 +287,8 @@ static void link_hash(struct hash *h)
 
 	fprintf(stderr, "\n");
 
-	merge_hash_groups(h, &hash_groups);
+	while (!iv_avl_tree_empty(&hash_groups))
+		merge_hash_groups(h, &hash_groups);
 }
 
 void make_hardlinks(struct iv_avl_tree *hashes)
