@@ -33,7 +33,11 @@ struct hash_group
 	struct iv_avl_node	an;
 	dev_t			st_dev;
 	ino_t			st_ino;
+	mode_t			st_mode;
 	nlink_t			st_nlink;
+	uid_t			st_uid;
+	gid_t			st_gid;
+	off_t			st_size;
 	int			num_dentries;
 	struct iv_list_head	dentries;
 };
@@ -88,6 +92,14 @@ find_hash_group(struct iv_avl_tree *tree, dev_t dev, ino_t ino)
 static int hash_groups_mergeable(struct hash_group *a, struct hash_group *b)
 {
 	if (a->st_dev != b->st_dev)
+		return 0;
+	if (a->st_mode != b->st_mode)
+		return 0;
+	if (a->st_uid != b->st_uid)
+		return 0;
+	if (a->st_gid != b->st_gid)
+		return 0;
+	if (a->st_size != b->st_size)
 		return 0;
 
 	return 1;
@@ -149,10 +161,15 @@ static void print_hash_group(struct hash_group *hg, struct hash_group *hgdest)
 {
 	struct iv_list_head *lh;
 
-	fprintf(stderr, " dev %.4lx ino %ld nlink %ld%s%s\n",
+	fprintf(stderr, " dev %.4lx ino %ld mode %lo nlink %ld"
+			" uid %ld gid %ld size %lld%s%s\n",
 		(long)hg->st_dev,
 		(long)hg->st_ino,
+		(long)hg->st_mode,
 		(long)hg->st_nlink,
+		(long)hg->st_uid,
+		(long)hg->st_gid,
+		(long long)hg->st_size,
 		(hg == hgdest) ? " dest-group" : "",
 		(hg->st_nlink != hg->num_dentries) ? " missing-refs" : "");
 
@@ -277,7 +294,11 @@ static void link_hash(struct hash *h)
 
 		hg->st_dev = buf.st_dev;
 		hg->st_ino = buf.st_ino;
+		hg->st_mode = buf.st_mode;
 		hg->st_nlink = buf.st_nlink;
+		hg->st_uid = buf.st_uid;
+		hg->st_gid = buf.st_gid;
+		hg->st_size = buf.st_size;
 		hg->num_dentries = 1;
 		INIT_IV_LIST_HEAD(&hg->dentries);
 		iv_list_add_tail(&d->list, &hg->dentries);
