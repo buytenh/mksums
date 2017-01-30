@@ -38,8 +38,8 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (rlim.rlim_cur < 134217728 && 134217728 <= rlim.rlim_max) {
-		rlim.rlim_cur = 134217728;
+	if (rlim.rlim_cur < 536870912 && 536870912 <= rlim.rlim_max) {
+		rlim.rlim_cur = 536870912;
 		setrlimit(RLIMIT_STACK, &rlim);
 	}
 
