@@ -46,7 +46,7 @@ struct file_to_hash
 	ino_t			d_ino;
 	enum state		state;
 	union {
-		uint8_t			hash[20];
+		uint8_t			hash[64];
 		struct file_to_hash	*backref;
 	};
 	char			d_name[0];

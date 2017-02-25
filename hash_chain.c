@@ -30,7 +30,7 @@
 static int hash_file(struct file_to_hash *fh)
 {
 	int fd;
-	SHA_CTX c;
+	SHA512_CTX c;
 
 	fd = openat_try_noatime(fh->dir->dirfd, fh->d_name, 0);
 	if (fd < 0) {
@@ -42,7 +42,7 @@ static int hash_file(struct file_to_hash *fh)
 		return 1;
 	}
 
-	SHA1_Init(&c);
+	SHA512_Init(&c);
 
 	while (1) {
 		uint8_t buf[1048576];
@@ -58,7 +58,7 @@ static int hash_file(struct file_to_hash *fh)
 		if (ret == 0)
 			break;
 
-		SHA1_Update(&c, buf, ret);
+		SHA512_Update(&c, buf, ret);
 
 		if (ret < sizeof(buf))
 			break;
@@ -66,7 +66,7 @@ static int hash_file(struct file_to_hash *fh)
 
 	close(fd);
 
-	SHA1_Final(fh->hash, &c);
+	SHA512_Final(fh->hash, &c);
 
 	return 0;
 }
