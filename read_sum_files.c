@@ -30,7 +30,7 @@ compare_hash(const struct iv_avl_node *_a, const struct iv_avl_node *_b)
 	const struct hash *a = iv_container_of(_a, struct hash, an);
 	const struct hash *b = iv_container_of(_b, struct hash, an);
 
-	return memcmp(a->hash, b->hash, 20);
+	return memcmp(a->hash, b->hash, sizeof(a->hash));
 }
 
 static int hextoval(char c)
@@ -51,7 +51,7 @@ static int parse_hash(uint8_t *hash, char *text)
 {
 	int i;
 
-	for (i = 0; i < 20; i++) {
+	for (i = 0; i < 64; i++) {
 		int val;
 		int val2;
 
@@ -80,7 +80,7 @@ static struct hash *find_hash(struct iv_avl_tree *tree, uint8_t *hash)
 
 		h = iv_container_of(an, struct hash, an);
 
-		ret = memcmp(hash, h->hash, 20);
+		ret = memcmp(hash, h->hash, sizeof(h->hash));
 		if (ret == 0)
 			return h;
 
@@ -110,7 +110,7 @@ static void add_dentry(struct hash *h, char *name, int namelen)
 struct hash_1ref
 {
 	struct iv_avl_node	an;
-	uint8_t			hash[20];
+	uint8_t			hash[64];
 	char			name[0];
 };
 
@@ -135,7 +135,7 @@ int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[])
 		while (1) {
 			char line[2048];
 			int len;
-			uint8_t hash[20];
+			uint8_t hash[64];
 			struct hash *h;
 			struct hash_1ref *h1;
 
@@ -151,7 +151,7 @@ int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[])
 			if (len && line[len - 1] == '\n')
 				line[--len] = 0;
 
-			if (len < 43 || parse_hash(hash, line)) {
+			if (len < 131 || parse_hash(hash, line)) {
 				fprintf(stderr, "error parsing line: %s\n",
 					line);
 				continue;
@@ -159,7 +159,7 @@ int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[])
 
 			h = find_hash(dst, hash);
 			if (h != NULL) {
-				add_dentry(h, line + 42, len - 42);
+				add_dentry(h, line + 130, len - 130);
 				continue;
 			}
 
@@ -168,24 +168,24 @@ int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[])
 				h = malloc(sizeof(*h));
 				if (h == NULL)
 					abort();
-				memcpy(h->hash, hash, 20);
+				memcpy(h->hash, hash, sizeof(h->hash));
 				INIT_IV_LIST_HEAD(&h->dentries);
 				iv_avl_tree_insert(dst, &h->an);
 
 				add_dentry(h, h1->name, strlen(h1->name));
-				add_dentry(h, line + 42, len - 42);
+				add_dentry(h, line + 130, len - 130);
 
 				iv_avl_tree_delete(&hash_1ref, &h1->an);
 
 				continue;
 			}
 
-			h1 = alloca(sizeof(*h1) + len - 42 + 1);
+			h1 = alloca(sizeof(*h1) + len - 130 + 1);
 			if (h1 == NULL)
 				abort();
 
-			memcpy(h1->hash, hash, 20);
-			strcpy(h1->name, line + 42);
+			memcpy(h1->hash, hash, sizeof(h1->hash));
+			strcpy(h1->name, line + 130);
 			iv_avl_tree_insert(&hash_1ref, &h1->an);
 		}
 

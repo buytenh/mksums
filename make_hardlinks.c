@@ -324,13 +324,13 @@ void make_hardlinks(struct iv_avl_tree *hashes)
 
 	iv_avl_tree_for_each (an, hashes) {
 		struct hash *h;
-		char dispbuf[50];
+		char dispbuf[256];
 		int i;
 
 		h = iv_container_of(an, struct hash, an);
 
 		strcpy(dispbuf, "\rmerging ");
-		for (i = 0; i < 20; i++)
+		for (i = 0; i < sizeof(h->hash); i++)
 			sprintf(dispbuf + 2 * i + 9, "%.2x", h->hash[i]);
 
 		fputs(dispbuf, stderr);
@@ -338,5 +338,7 @@ void make_hardlinks(struct iv_avl_tree *hashes)
 		link_hash(h);
 	}
 
-	fprintf(stderr, "\rmerging done                                    \n");
+	fprintf(stderr, "\rmerging done                                 "
+			"                                               "
+			"                                            \n");
 }

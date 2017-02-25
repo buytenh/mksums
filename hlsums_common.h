@@ -27,7 +27,7 @@
 struct hash
 {
 	struct iv_avl_node	an;
-	uint8_t			hash[20];
+	uint8_t			hash[64];
 	struct iv_list_head	dentries;
 };
 
