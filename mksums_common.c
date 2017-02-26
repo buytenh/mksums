@@ -91,16 +91,36 @@ void free_file_chain(struct iv_list_head *files)
 
 void run_threads(void *(*handler)(void *), void *cookie, int nthreads)
 {
+	pthread_attr_t attr;
+	int ret;
 	pthread_t tid[nthreads];
 	int i;
-	int ret;
+
+	ret = pthread_attr_init(&attr);
+	if (ret) {
+		fprintf(stderr, "pthread_attr_init: %s\n", strerror(ret));
+		exit(1);
+	}
+
+	ret = pthread_attr_setstacksize(&attr, 536870912);
+	if (ret) {
+		fprintf(stderr, "pthread_attr_setstacksize: %s\n",
+			strerror(ret));
+		exit(1);
+	}
 
 	for (i = 0; i < nthreads; i++) {
-		ret = pthread_create(tid + i, NULL, handler, cookie);
+		ret = pthread_create(tid + i, &attr, handler, cookie);
 		if (ret) {
 			fprintf(stderr, "pthread_create: %s\n", strerror(ret));
 			exit(1);
 		}
+	}
+
+	ret = pthread_attr_destroy(&attr);
+	if (ret) {
+		fprintf(stderr, "pthread_attr_destroy: %s\n", strerror(ret));
+		exit(1);
 	}
 
 	for (i = 0; i < nthreads; i++) {
