@@ -23,6 +23,9 @@
 #include <iv_avl.h>
 #include <iv_list.h>
 #include <stdint.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 struct hash
 {
@@ -37,11 +40,29 @@ struct dentry
 	char			name[0];
 };
 
+struct inode
+{
+	struct iv_avl_node	an;
+	dev_t			st_dev;
+	ino_t			st_ino;
+	mode_t			st_mode;
+	nlink_t			st_nlink;
+	uid_t			st_uid;
+	gid_t			st_gid;
+	off_t			st_size;
+	int			num_dentries;
+	struct iv_list_head	dentries;
+};
+
 /* make_hardlinks.c */
 void make_hardlinks(struct iv_avl_tree *hashes);
 
 /* read_sum_files.c */
 int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[]);
+
+/* scan_inodes.c */
+void scan_inodes(struct hash *h, void *cookie,
+		 void (*cb)(void *cookie, struct iv_avl_tree *inodes));
 
 
 #endif
