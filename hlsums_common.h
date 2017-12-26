@@ -52,6 +52,8 @@ struct inode
 	off_t			st_size;
 	int			num_dentries;
 	struct iv_list_head	dentries;
+
+	char			visited;
 };
 
 /* make_hardlinks.c */
