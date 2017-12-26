@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include "hlsums_common.h"
 
-struct hash_group
+struct inode
 {
 	struct iv_avl_node	an;
 	dev_t			st_dev;
@@ -43,12 +43,10 @@ struct hash_group
 };
 
 static int
-compare_hash_group(const struct iv_avl_node *_a, const struct iv_avl_node *_b)
+compare_inodes(const struct iv_avl_node *_a, const struct iv_avl_node *_b)
 {
-	const struct hash_group *a =
-		iv_container_of(_a, struct hash_group, an);
-	const struct hash_group *b =
-		iv_container_of(_b, struct hash_group, an);
+	const struct inode *a = iv_container_of(_a, struct inode, an);
+	const struct inode *b = iv_container_of(_b, struct inode, an);
 
 	if (a->st_dev < b->st_dev)
 		return -1;
@@ -63,24 +61,24 @@ compare_hash_group(const struct iv_avl_node *_a, const struct iv_avl_node *_b)
 	return 0;
 }
 
-static struct hash_group *
-find_hash_group(struct iv_avl_tree *tree, dev_t dev, ino_t ino)
+static struct inode *
+find_inode(struct iv_avl_tree *tree, dev_t st_dev, ino_t st_ino)
 {
 	struct iv_avl_node *an;
 
 	an = tree->root;
 	while (an != NULL) {
-		struct hash_group *hg;
+		struct inode *ino;
 
-		hg = iv_container_of(an, struct hash_group, an);
-		if (dev == hg->st_dev && ino == hg->st_ino)
-			return hg;
+		ino = iv_container_of(an, struct inode, an);
+		if (st_dev == ino->st_dev && st_ino == ino->st_ino)
+			return ino;
 
-		if (dev < hg->st_dev)
+		if (st_dev < ino->st_dev)
 			an = an->left;
-		else if (dev > hg->st_dev)
+		else if (st_dev > ino->st_dev)
 			an = an->right;
-		else if (ino < hg->st_ino)
+		else if (st_ino < ino->st_ino)
 			an = an->left;
 		else
 			an = an->right;
@@ -89,7 +87,7 @@ find_hash_group(struct iv_avl_tree *tree, dev_t dev, ino_t ino)
 	return NULL;
 }
 
-static int hash_groups_mergeable(struct hash_group *a, struct hash_group *b)
+static int inodes_mergeable(struct inode *a, struct inode *b)
 {
 	if (a->st_dev != b->st_dev)
 		return 0;
@@ -105,15 +103,15 @@ static int hash_groups_mergeable(struct hash_group *a, struct hash_group *b)
 	return 1;
 }
 
-static int missing(struct hash_group *hg)
+static int missing(struct inode *ino)
 {
-	if (hg->st_nlink < hg->num_dentries)
+	if (ino->st_nlink < ino->num_dentries)
 		abort();
 
-	return hg->st_nlink - hg->num_dentries;
+	return ino->st_nlink - ino->num_dentries;
 }
 
-static int prefer_hash_group(struct hash_group *a, struct hash_group *b)
+static int prefer_inode(struct inode *a, struct inode *b)
 {
 	int missing_a;
 	int missing_b;
@@ -136,44 +134,44 @@ static int prefer_hash_group(struct hash_group *a, struct hash_group *b)
 	return 0;
 }
 
-static struct hash_group *
-find_dest_group(struct iv_avl_tree *hash_groups, struct hash_group *hgfirst)
+static struct inode *
+find_dest_inode(struct iv_avl_tree *inodes, struct inode *inofirst)
 {
-	struct hash_group *hgdest;
+	struct inode *inodest;
 	struct iv_avl_node *an;
 
-	hgdest = hgfirst;
-	iv_avl_tree_for_each (an, hash_groups) {
-		struct hash_group *hg;
+	inodest = inofirst;
+	iv_avl_tree_for_each (an, inodes) {
+		struct inode *ino;
 
-		hg = iv_container_of(an, struct hash_group, an);
-		if (!hash_groups_mergeable(hg, hgdest))
+		ino = iv_container_of(an, struct inode, an);
+		if (!inodes_mergeable(ino, inodest))
 			continue;
 
-		if (prefer_hash_group(hg, hgdest))
-			hgdest = hg;
+		if (prefer_inode(ino, inodest))
+			inodest = ino;
 	}
 
-	return hgdest;
+	return inodest;
 }
 
-static void print_hash_group(struct hash_group *hg, struct hash_group *hgdest)
+static void print_inode(struct inode *ino, struct inode *inodest)
 {
 	struct iv_list_head *lh;
 
 	fprintf(stderr, " dev %.4lx ino %ld mode %lo nlink %ld"
 			" uid %ld gid %ld size %lld%s%s\n",
-		(long)hg->st_dev,
-		(long)hg->st_ino,
-		(long)hg->st_mode,
-		(long)hg->st_nlink,
-		(long)hg->st_uid,
-		(long)hg->st_gid,
-		(long long)hg->st_size,
-		(hg == hgdest) ? " <==" : "",
-		(hg->st_nlink != hg->num_dentries) ? " (missing-refs)" : "");
+		(long)ino->st_dev,
+		(long)ino->st_ino,
+		(long)ino->st_mode,
+		(long)ino->st_nlink,
+		(long)ino->st_uid,
+		(long)ino->st_gid,
+		(long long)ino->st_size,
+		(ino == inodest) ? " <==" : "",
+		(ino->st_nlink != ino->num_dentries) ? " (missing-refs)" : "");
 
-	iv_list_for_each (lh, &hg->dentries) {
+	iv_list_for_each (lh, &ino->dentries) {
 		struct dentry *d;
 
 		d = iv_container_of(lh, struct dentry, list);
@@ -206,42 +204,42 @@ static void try_link(char *from, char *to)
 	}
 }
 
-static void merge_hash_groups(struct hash *h, struct iv_avl_tree *hash_groups)
+static void merge_inodes(struct hash *h, struct iv_avl_tree *inodes)
 {
-	struct hash_group *hgdest;
-	int printed_hgdest;
+	struct inode *inodest;
+	int printed_inodest;
 	struct dentry *dto;
 	struct iv_avl_node *an;
 	struct iv_avl_node *an2;
 
-	hgdest = find_dest_group(hash_groups,
-				 iv_container_of(iv_avl_tree_min(hash_groups),
-						 struct hash_group, an));
+	inodest = find_dest_inode(inodes,
+				  iv_container_of(iv_avl_tree_min(inodes),
+						  struct inode, an));
 
-	printed_hgdest = 0;
+	printed_inodest = 0;
 
-	dto = iv_container_of(hgdest->dentries.next, struct dentry, list);
-	iv_avl_tree_for_each_safe (an, an2, hash_groups) {
-		struct hash_group *hg;
+	dto = iv_container_of(inodest->dentries.next, struct dentry, list);
+	iv_avl_tree_for_each_safe (an, an2, inodes) {
+		struct inode *ino;
 		struct iv_list_head *lh;
 		struct iv_list_head *lh2;
 
-		hg = iv_container_of(an, struct hash_group, an);
+		ino = iv_container_of(an, struct inode, an);
 
-		if (!hash_groups_mergeable(hg, hgdest))
+		if (!inodes_mergeable(ino, inodest))
 			continue;
-		iv_avl_tree_delete(hash_groups, an);
+		iv_avl_tree_delete(inodes, an);
 
-		if (hg == hgdest)
+		if (ino == inodest)
 			continue;
 
-		if (!printed_hgdest) {
-			print_hash_group(hgdest, hgdest);
-			printed_hgdest = 1;
+		if (!printed_inodest) {
+			print_inode(inodest, inodest);
+			printed_inodest = 1;
 		}
-		print_hash_group(hg, hgdest);
+		print_inode(ino, inodest);
 
-		iv_list_for_each_safe (lh, lh2, &hg->dentries) {
+		iv_list_for_each_safe (lh, lh2, &ino->dentries) {
 			struct dentry *d;
 
 			d = iv_container_of(lh, struct dentry, list);
@@ -253,23 +251,23 @@ static void merge_hash_groups(struct hash *h, struct iv_avl_tree *hash_groups)
 		}
 	}
 
-	if (printed_hgdest)
+	if (printed_inodest)
 		fprintf(stderr, "\n");
 }
 
 static void link_hash(struct hash *h)
 {
-	struct iv_avl_tree hash_groups;
+	struct iv_avl_tree inodes;
 	struct iv_list_head *lh;
 	struct iv_list_head *lh2;
 
-	INIT_IV_AVL_TREE(&hash_groups, compare_hash_group);
+	INIT_IV_AVL_TREE(&inodes, compare_inodes);
 
 	iv_list_for_each_safe (lh, lh2, &h->dentries) {
 		struct dentry *d;
 		struct stat buf;
 		int ret;
-		struct hash_group *hg;
+		struct inode *ino;
 
 		d = iv_container_of(lh, struct dentry, list);
 
@@ -287,35 +285,35 @@ static void link_hash(struct hash *h)
 
 		iv_list_del(&d->list);
 
-		hg = find_hash_group(&hash_groups, buf.st_dev, buf.st_ino);
-		if (hg != NULL) {
-			hg->num_dentries++;
-			iv_list_add_tail(&d->list, &hg->dentries);
+		ino = find_inode(&inodes, buf.st_dev, buf.st_ino);
+		if (ino != NULL) {
+			ino->num_dentries++;
+			iv_list_add_tail(&d->list, &ino->dentries);
 			continue;
 		}
 
-		hg = alloca(sizeof(*hg));
-		if (hg == NULL)
+		ino = alloca(sizeof(*ino));
+		if (ino == NULL)
 			abort();
 
-		hg->st_dev = buf.st_dev;
-		hg->st_ino = buf.st_ino;
-		hg->st_mode = buf.st_mode;
-		hg->st_nlink = buf.st_nlink;
-		hg->st_uid = buf.st_uid;
-		hg->st_gid = buf.st_gid;
-		hg->st_size = buf.st_size;
-		hg->num_dentries = 1;
-		INIT_IV_LIST_HEAD(&hg->dentries);
-		iv_list_add_tail(&d->list, &hg->dentries);
+		ino->st_dev = buf.st_dev;
+		ino->st_ino = buf.st_ino;
+		ino->st_mode = buf.st_mode;
+		ino->st_nlink = buf.st_nlink;
+		ino->st_uid = buf.st_uid;
+		ino->st_gid = buf.st_gid;
+		ino->st_size = buf.st_size;
+		ino->num_dentries = 1;
+		INIT_IV_LIST_HEAD(&ino->dentries);
+		iv_list_add_tail(&d->list, &ino->dentries);
 
-		iv_avl_tree_insert(&hash_groups, &hg->an);
+		iv_avl_tree_insert(&inodes, &ino->an);
 	}
 
 	fprintf(stderr, "\n");
 
-	while (!iv_avl_tree_empty(&hash_groups))
-		merge_hash_groups(h, &hash_groups);
+	while (!iv_avl_tree_empty(&inodes))
+		merge_inodes(h, &inodes);
 }
 
 void make_hardlinks(struct iv_avl_tree *hashes)
