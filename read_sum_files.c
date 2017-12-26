@@ -125,12 +125,15 @@ int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[])
 
 	for (i = 0; i < num_files; i++) {
 		FILE *fp;
+		char mapbuf[1048576];
 
 		fp = fopen(file[i], "r");
 		if (fp == NULL) {
 			perror("fopen");
 			return 1;
 		}
+
+		setbuffer(fp, mapbuf, sizeof(mapbuf));
 
 		while (1) {
 			char line[2048];
