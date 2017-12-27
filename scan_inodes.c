@@ -76,6 +76,7 @@ void scan_inodes(struct hash *h, void *cookie,
 	struct iv_avl_tree inodes;
 	struct iv_list_head *lh;
 	struct iv_list_head *lh2;
+	struct iv_avl_node *an;
 
 	INIT_IV_AVL_TREE(&inodes, compare_inodes);
 
@@ -127,4 +128,14 @@ void scan_inodes(struct hash *h, void *cookie,
 	}
 
 	cb(cookie, &inodes);
+
+	iv_avl_tree_for_each (an, &inodes) {
+		struct inode *ino;
+
+		ino = iv_container_of(an, struct inode, an);
+		iv_list_for_each_safe (lh, lh2, &ino->dentries) {
+			iv_list_del(lh);
+			iv_list_add_tail(lh, &h->dentries);
+		}
+	}
 }
