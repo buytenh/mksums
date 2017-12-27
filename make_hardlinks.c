@@ -153,7 +153,8 @@ static int try_link(char *from, char *to)
 	return 0;
 }
 
-static void merge_into_leader(struct iv_avl_tree *inodes, struct inode *leader)
+static void merge_into_leader(struct iv_avl_tree *inodes,
+			      struct inode *leader, int *need_nl)
 {
 	struct dentry *dleader;
 	int printed_leader;
@@ -180,7 +181,12 @@ static void merge_into_leader(struct iv_avl_tree *inodes, struct inode *leader)
 		ino->visited = 1;
 
 		if (!printed_leader) {
+			if (*need_nl) {
+				fprintf(stderr, "\n");
+				*need_nl = 0;
+			}
 			print_inode(leader, leader);
+
 			printed_leader = 1;
 		}
 
@@ -201,7 +207,7 @@ static void merge_into_leader(struct iv_avl_tree *inodes, struct inode *leader)
 		fprintf(stderr, "\n");
 }
 
-static void merge_inodes(struct iv_avl_tree *inodes)
+static void merge_inodes(struct iv_avl_tree *inodes, int *need_nl)
 {
 	struct iv_avl_node *an;
 
@@ -219,15 +225,15 @@ static void merge_inodes(struct iv_avl_tree *inodes)
 		if (leader == NULL)
 			break;
 
-		merge_into_leader(inodes, leader);
+		merge_into_leader(inodes, leader, need_nl);
 	}
 }
 
-static void link_hash(void *dummy, struct iv_avl_tree *inodes)
+static void link_hash(void *_need_nl, struct iv_avl_tree *inodes)
 {
-	fprintf(stderr, "\n");
+	int *need_nl = _need_nl;
 
-	merge_inodes(inodes);
+	merge_inodes(inodes, need_nl);
 }
 
 void make_hardlinks(struct iv_avl_tree *hashes)
@@ -238,6 +244,7 @@ void make_hardlinks(struct iv_avl_tree *hashes)
 		struct hash *h;
 		char dispbuf[256];
 		int i;
+		int need_nl;
 
 		h = iv_container_of(an, struct hash, an);
 
@@ -247,7 +254,8 @@ void make_hardlinks(struct iv_avl_tree *hashes)
 
 		fputs(dispbuf, stderr);
 
-		scan_inodes(h, NULL, link_hash);
+		need_nl = 1;
+		scan_inodes(h, &need_nl, link_hash);
 	}
 
 	fprintf(stderr, "\rmerging done                                 "
