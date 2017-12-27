@@ -126,7 +126,7 @@ static void print_inode(struct inode *ino, struct inode *leader)
 	}
 }
 
-static void try_link(char *from, char *to)
+static int try_link(char *from, char *to)
 {
 	static const char *tempfile = "zufequohshuel8Aihoovie9ooMiegiiJ";
 	int ret;
@@ -134,14 +134,14 @@ static void try_link(char *from, char *to)
 	ret = link(to, tempfile);
 	if (ret < 0) {
 		fprintf(stderr, "linking %s: %s\n", to, strerror(errno));
-		return;
+		return -1;
 	}
 
 	ret = rename(tempfile, from);
 	if (ret < 0) {
 		fprintf(stderr, "renaming %s: %s\n", from, strerror(errno));
 		unlink(tempfile);
-		return;
+		return -1;
 	}
 
 	ret = unlink(tempfile);
@@ -149,6 +149,8 @@ static void try_link(char *from, char *to)
 		fprintf(stderr, "unexpected hard links: %s / %s\n", from, to);
 		abort();
 	}
+
+	return 0;
 }
 
 static void merge_into_leader(struct iv_avl_tree *inodes, struct inode *leader)
@@ -165,6 +167,7 @@ static void merge_into_leader(struct iv_avl_tree *inodes, struct inode *leader)
 	iv_avl_tree_for_each (an, inodes) {
 		struct inode *ino;
 		struct iv_list_head *lh;
+		struct iv_list_head *lh2;
 
 		ino = iv_container_of(an, struct inode, an);
 
@@ -183,11 +186,14 @@ static void merge_into_leader(struct iv_avl_tree *inodes, struct inode *leader)
 
 		print_inode(ino, leader);
 
-		iv_list_for_each (lh, &ino->dentries) {
+		iv_list_for_each_safe (lh, lh2, &ino->dentries) {
 			struct dentry *d;
 
 			d = iv_container_of(lh, struct dentry, list);
-			try_link(d->name, dleader->name);
+			if (!try_link(d->name, dleader->name)) {
+				iv_list_del(&d->list);
+				iv_list_add_tail(&d->list, &leader->dentries);
+			}
 		}
 	}
 
