@@ -25,7 +25,7 @@
 #include <string.h>
 #include "hlsums_common.h"
 
-static int inodes_mergeable(struct inode *a, struct inode *b)
+static int inodes_linkable(const struct inode *a, const struct inode *b)
 {
 	if (a->st_dev != b->st_dev)
 		return 0;
@@ -41,7 +41,7 @@ static int inodes_mergeable(struct inode *a, struct inode *b)
 	return 1;
 }
 
-static int missing(struct inode *ino)
+static int missing(const struct inode *ino)
 {
 	if (ino->st_nlink < ino->num_dentries)
 		abort();
@@ -49,7 +49,7 @@ static int missing(struct inode *ino)
 	return ino->st_nlink - ino->num_dentries;
 }
 
-static int prefer_inode(struct inode *a, struct inode *b)
+static int better_leader(const struct inode *a, const struct inode *b)
 {
 	int missing_a;
 	int missing_b;
@@ -70,60 +70,6 @@ static int prefer_inode(struct inode *a, struct inode *b)
 		return 1;
 
 	return 0;
-}
-
-static struct inode *pick_leader(struct iv_avl_tree *inodes)
-{
-	struct inode *leader;
-	struct iv_avl_node *an;
-
-	leader = NULL;
-	iv_avl_tree_for_each (an, inodes) {
-		struct inode *ino;
-
-		ino = iv_container_of(an, struct inode, an);
-
-		if (ino->visited)
-			continue;
-
-		if (leader != NULL) {
-			if (!inodes_mergeable(ino, leader))
-				continue;
-			if (!prefer_inode(ino, leader))
-				continue;
-		}
-
-		leader = ino;
-	}
-
-	return leader;
-}
-
-static void print_inode(struct inode *ino, struct inode *leader)
-{
-	struct iv_list_head *lh;
-
-	if (iv_list_empty(&ino->dentries))
-		return;
-
-	fprintf(stderr, " dev %.4lx ino %ld mode %lo nlink %ld"
-			" uid %ld gid %ld size %lld%s%s\n",
-		(long)ino->st_dev,
-		(long)ino->st_ino,
-		(long)ino->st_mode,
-		(long)ino->st_nlink,
-		(long)ino->st_uid,
-		(long)ino->st_gid,
-		(long long)ino->st_size,
-		(ino == leader) ? " <==" : "",
-		(ino->st_nlink != ino->num_dentries) ? " (missing-refs)" : "");
-
-	iv_list_for_each (lh, &ino->dentries) {
-		struct dentry *d;
-
-		d = iv_container_of(lh, struct dentry, list);
-		fprintf(stderr, "  %s\n", d->name);
-	}
 }
 
 static int try_link(char *from, char *to)
@@ -153,78 +99,27 @@ static int try_link(char *from, char *to)
 	return 0;
 }
 
-static void merge_into_leader(struct iv_avl_tree *inodes,
-			      struct inode *leader, int *need_nl)
+static void do_link_inodes(struct inode *leader, struct inode *ino)
 {
 	struct dentry *dleader;
-	int printed_leader;
-	struct iv_avl_node *an;
-
-	leader->visited = 1;
+	struct iv_list_head *lh;
+	struct iv_list_head *lh2;
 
 	dleader = iv_container_of(leader->dentries.next, struct dentry, list);
 
-	printed_leader = 0;
-	iv_avl_tree_for_each (an, inodes) {
-		struct inode *ino;
-		struct iv_list_head *lh;
-		struct iv_list_head *lh2;
+	iv_list_for_each_safe (lh, lh2, &ino->dentries) {
+		struct dentry *d;
 
-		ino = iv_container_of(an, struct inode, an);
-
-		if (ino->visited)
-			continue;
-
-		if (!inodes_mergeable(ino, leader))
-			continue;
-
-		ino->visited = 1;
-
-		if (!printed_leader) {
-			if (*need_nl) {
-				fprintf(stderr, "\n");
-				*need_nl = 0;
-			}
-			print_inode(leader, leader);
-
-			printed_leader = 1;
-		}
-
-		print_inode(ino, leader);
-
-		iv_list_for_each_safe (lh, lh2, &ino->dentries) {
-			struct dentry *d;
-
-			d = iv_container_of(lh, struct dentry, list);
-			if (!try_link(d->name, dleader->name)) {
-				iv_list_del(&d->list);
-				iv_list_add_tail(&d->list, &leader->dentries);
-			}
+		d = iv_container_of(lh, struct dentry, list);
+		if (!try_link(d->name, dleader->name)) {
+			iv_list_del(&d->list);
+			iv_list_add_tail(&d->list, &leader->dentries);
 		}
 	}
-
-	if (printed_leader)
-		fprintf(stderr, "\n");
 }
 
-void merge_inodes(struct iv_avl_tree *inodes, int *need_nl)
+void link_inodes(struct iv_avl_tree *inodes, int *need_nl)
 {
-	struct iv_avl_node *an;
-
-	iv_avl_tree_for_each (an, inodes) {
-		struct inode *ino;
-
-		ino = iv_container_of(an, struct inode, an);
-		ino->visited = 0;
-	}
-
-	while (1) {
-		struct inode *leader;
-
-		leader = pick_leader(inodes);
-		if (leader == NULL)
-			break;
-
-		merge_into_leader(inodes, leader, need_nl);
-	}
+	segment_inodes(inodes, need_nl, "hl",
+		       inodes_linkable, better_leader, do_link_inodes);
 }

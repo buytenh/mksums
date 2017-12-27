@@ -29,7 +29,7 @@ static void process_inode_set(void *_need_nl, struct iv_avl_tree *inodes)
 {
 	int *need_nl = _need_nl;
 
-	merge_inodes(inodes, need_nl);
+	link_inodes(inodes, need_nl);
 }
 
 static void make_hardlinks(struct iv_avl_tree *hashes)

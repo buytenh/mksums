@@ -57,7 +57,7 @@ struct inode
 };
 
 /* make_hardlinks.c */
-void merge_inodes(struct iv_avl_tree *inodes, int *need_nl);
+void link_inodes(struct iv_avl_tree *inodes, int *need_nl);
 
 /* read_sum_files.c */
 int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[]);
@@ -65,6 +65,15 @@ int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[]);
 /* scan_inodes.c */
 void scan_inodes(struct hash *h, void *cookie,
 		 void (*cb)(void *cookie, struct iv_avl_tree *inodes));
+
+/* segment_inodes.c */
+void segment_inodes(struct iv_avl_tree *inodes, int *need_nl, char *task,
+		    int (*inodes_equiv)(const struct inode *a,
+					const struct inode *b),
+		    int (*better_leader)(const struct inode *a,
+					 const struct inode *b),
+		    void (*found_equiv)(struct inode *leader,
+					struct inode *ino));
 
 
 #endif
