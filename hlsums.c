@@ -19,20 +19,28 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <getopt.h>
 #include <iv_avl.h>
 #include <string.h>
 #include <sys/resource.h>
 #include <sys/types.h>
 #include "hlsums_common.h"
 
+static int do_link;
+static int do_dedup;
+
 static void process_inode_set(void *_need_nl, struct iv_avl_tree *inodes)
 {
 	int *need_nl = _need_nl;
 
-	link_inodes(inodes, need_nl);
+	if (do_link)
+		link_inodes(inodes, need_nl);
+
+	if (do_dedup)
+		dedup_inodes(inodes, need_nl);
 }
 
-static void make_hardlinks(struct iv_avl_tree *hashes)
+static void link_dedup(struct iv_avl_tree *hashes)
 {
 	struct iv_avl_node *an;
 
@@ -87,8 +95,45 @@ static void free_hashes(struct iv_avl_tree *hashes)
 
 int main(int argc, char *argv[])
 {
+	static struct option long_options[] = {
+		{ "dedup", no_argument, 0, 'd', },
+		{ "link", no_argument, 0, 'l', },
+		{ 0, 0, 0, 0, },
+	};
 	struct rlimit rlim;
 	struct iv_avl_tree hashes;
+
+	while (1) {
+		int c;
+
+		c = getopt_long(argc, argv, "dl", long_options, NULL);
+		if (c == -1)
+			break;
+
+		switch (c) {
+		case 'd':
+			do_dedup = 1;
+			break;
+
+		case 'l':
+			do_link = 1;
+			break;
+
+		case '?':
+			return 1;
+
+		default:
+			abort();
+		}
+	}
+
+	if (argc == optind) {
+		fprintf(stderr, "%s: [--dedup] [--link] [sumfile]+\n", argv[0]);
+		return 1;
+	}
+
+	if (!do_dedup && !do_link)
+		do_link = 1;
 
 	if (getrlimit(RLIMIT_STACK, &rlim) < 0) {
 		perror("getrlimit(RLIMIT_STACK)");
@@ -100,10 +145,10 @@ int main(int argc, char *argv[])
 		setrlimit(RLIMIT_STACK, &rlim);
 	}
 
-	if (read_sum_files(&hashes, argc - 1, argv + 1))
+	if (read_sum_files(&hashes, argc - optind, argv + optind))
 		return 1;
 
-	make_hardlinks(&hashes);
+	link_dedup(&hashes);
 
 	free_hashes(&hashes);
 

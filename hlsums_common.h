@@ -54,7 +54,14 @@ struct inode
 	struct iv_list_head	dentries;
 
 	char			visited;
+
+	/* for dedup_inodes() */
+	char			readonly;
+	int			fd;
 };
+
+/* dedup_inodes.c */
+void dedup_inodes(struct iv_avl_tree *inodes, int *need_nl);
 
 /* make_hardlinks.c */
 void link_inodes(struct iv_avl_tree *inodes, int *need_nl);
