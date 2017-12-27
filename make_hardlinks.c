@@ -73,27 +73,27 @@ static int prefer_inode(struct inode *a, struct inode *b)
 }
 
 static struct inode *
-find_dest_inode(struct iv_avl_tree *inodes, struct inode *inofirst)
+pick_leader(struct iv_avl_tree *inodes, struct inode *inofirst)
 {
-	struct inode *inodest;
+	struct inode *leader;
 	struct iv_avl_node *an;
 
-	inodest = inofirst;
+	leader = inofirst;
 	iv_avl_tree_for_each (an, inodes) {
 		struct inode *ino;
 
 		ino = iv_container_of(an, struct inode, an);
-		if (!inodes_mergeable(ino, inodest))
+		if (!inodes_mergeable(ino, leader))
 			continue;
 
-		if (prefer_inode(ino, inodest))
-			inodest = ino;
+		if (prefer_inode(ino, leader))
+			leader = ino;
 	}
 
-	return inodest;
+	return leader;
 }
 
-static void print_inode(struct inode *ino, struct inode *inodest)
+static void print_inode(struct inode *ino, struct inode *leader)
 {
 	struct iv_list_head *lh;
 
@@ -106,7 +106,7 @@ static void print_inode(struct inode *ino, struct inode *inodest)
 		(long)ino->st_uid,
 		(long)ino->st_gid,
 		(long long)ino->st_size,
-		(ino == inodest) ? " <==" : "",
+		(ino == leader) ? " <==" : "",
 		(ino->st_nlink != ino->num_dentries) ? " (missing-refs)" : "");
 
 	iv_list_for_each (lh, &ino->dentries) {
@@ -144,19 +144,19 @@ static void try_link(char *from, char *to)
 
 static void merge_inodes(struct hash *h, struct iv_avl_tree *inodes)
 {
-	struct inode *inodest;
-	int printed_inodest;
+	struct inode *leader;
+	int printed_leader;
 	struct dentry *dto;
 	struct iv_avl_node *an;
 	struct iv_avl_node *an2;
 
-	inodest = find_dest_inode(inodes,
-				  iv_container_of(iv_avl_tree_min(inodes),
-						  struct inode, an));
+	leader = pick_leader(inodes,
+			     iv_container_of(iv_avl_tree_min(inodes),
+					     struct inode, an));
 
-	printed_inodest = 0;
+	printed_leader = 0;
 
-	dto = iv_container_of(inodest->dentries.next, struct dentry, list);
+	dto = iv_container_of(leader->dentries.next, struct dentry, list);
 	iv_avl_tree_for_each_safe (an, an2, inodes) {
 		struct inode *ino;
 		struct iv_list_head *lh;
@@ -164,18 +164,18 @@ static void merge_inodes(struct hash *h, struct iv_avl_tree *inodes)
 
 		ino = iv_container_of(an, struct inode, an);
 
-		if (!inodes_mergeable(ino, inodest))
+		if (!inodes_mergeable(ino, leader))
 			continue;
 		iv_avl_tree_delete(inodes, an);
 
-		if (ino == inodest)
+		if (ino == leader)
 			continue;
 
-		if (!printed_inodest) {
-			print_inode(inodest, inodest);
-			printed_inodest = 1;
+		if (!printed_leader) {
+			print_inode(leader, leader);
+			printed_leader = 1;
 		}
-		print_inode(ino, inodest);
+		print_inode(ino, leader);
 
 		iv_list_for_each_safe (lh, lh2, &ino->dentries) {
 			struct dentry *d;
@@ -189,7 +189,7 @@ static void merge_inodes(struct hash *h, struct iv_avl_tree *inodes)
 		}
 	}
 
-	if (printed_inodest)
+	if (printed_leader)
 		fprintf(stderr, "\n");
 }
 
