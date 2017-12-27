@@ -20,9 +20,44 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iv_avl.h>
+#include <string.h>
 #include <sys/resource.h>
 #include <sys/types.h>
 #include "hlsums_common.h"
+
+static void process_inode_set(void *_need_nl, struct iv_avl_tree *inodes)
+{
+	int *need_nl = _need_nl;
+
+	merge_inodes(inodes, need_nl);
+}
+
+static void make_hardlinks(struct iv_avl_tree *hashes)
+{
+	struct iv_avl_node *an;
+
+	iv_avl_tree_for_each (an, hashes) {
+		struct hash *h;
+		char dispbuf[256];
+		int i;
+		int need_nl;
+
+		h = iv_container_of(an, struct hash, an);
+
+		strcpy(dispbuf, "\rmerging ");
+		for (i = 0; i < sizeof(h->hash); i++)
+			sprintf(dispbuf + 2 * i + 9, "%.2x", h->hash[i]);
+
+		fputs(dispbuf, stderr);
+
+		need_nl = 1;
+		scan_inodes(h, &need_nl, process_inode_set);
+	}
+
+	fprintf(stderr, "\rmerging done                                 "
+			"                                               "
+			"                                            \n");
+}
 
 static void free_hashes(struct iv_avl_tree *hashes)
 {

@@ -57,7 +57,7 @@ struct inode
 };
 
 /* make_hardlinks.c */
-void make_hardlinks(struct iv_avl_tree *hashes);
+void merge_inodes(struct iv_avl_tree *inodes, int *need_nl);
 
 /* read_sum_files.c */
 int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[]);
