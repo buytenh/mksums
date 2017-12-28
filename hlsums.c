@@ -53,7 +53,7 @@ static void link_dedup(struct iv_avl_tree *hashes)
 		h = iv_container_of(an, struct hash, an);
 
 		strcpy(dispbuf, "\rmerging ");
-		for (i = 0; i < sizeof(h->hash); i++)
+		for (i = 0; i < sizeof(h->hash) && i < 8; i++)
 			sprintf(dispbuf + 2 * i + 9, "%.2x", h->hash[i]);
 
 		fputs(dispbuf, stderr);
@@ -62,9 +62,7 @@ static void link_dedup(struct iv_avl_tree *hashes)
 		scan_inodes(h, &need_nl, process_inode_set);
 	}
 
-	fprintf(stderr, "\rmerging done                                 "
-			"                                               "
-			"                                            \n");
+	fprintf(stderr, "\rmerging done            \n");
 }
 
 static void free_hashes(struct iv_avl_tree *hashes)
