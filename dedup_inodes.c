@@ -121,42 +121,52 @@ static int better_block_source(const struct inode *a, const struct inode *b)
 
 static void do_dedup_inodes(struct inode *leader, struct inode *ino)
 {
-	struct {
-		struct file_dedupe_range r;
-		struct file_dedupe_range_info ri;
-	} x;
+	off_t off;
 
 	if (leader->fd == -1 || ino->fd == -1 || ino->readonly)
 		return;
 
-	x.r.src_offset = 0;
-	x.r.src_length = leader->st_size;
-	x.r.dest_count = 1;
-	x.r.reserved1 = 0;
-	x.r.reserved2 = 0;
-	x.ri.dest_fd = ino->fd;
-	x.ri.dest_offset = 0;
-	x.ri.bytes_deduped = 0;
-	x.ri.status = 0;
-	x.ri.reserved = 0;
+	off = 0;
+	while (off < leader->st_size) {
+		struct {
+			struct file_dedupe_range r;
+			struct file_dedupe_range_info ri;
+		} x;
 
-	if (ioctl(leader->fd, FIDEDUPERANGE, &x) < 0) {
-		perror("ioctl");
-		return;
+		x.r.src_offset = off;
+		x.r.src_length = leader->st_size - off;
+		x.r.dest_count = 1;
+		x.r.reserved1 = 0;
+		x.r.reserved2 = 0;
+		x.ri.dest_fd = ino->fd;
+		x.ri.dest_offset = off;
+		x.ri.bytes_deduped = 0;
+		x.ri.status = 0;
+		x.ri.reserved = 0;
+
+		if (ioctl(leader->fd, FIDEDUPERANGE, &x) < 0) {
+			perror("ioctl");
+			break;
+		}
+
+		if (x.ri.status == FILE_DEDUPE_RANGE_DIFFERS) {
+			fprintf(stderr, "welp, data differs\n");
+			break;
+		}
+
+		if (x.ri.status != FILE_DEDUPE_RANGE_SAME) {
+			fprintf(stderr, "FIDEDUPERANGE: %s\n",
+				strerror(-x.ri.status));
+			break;
+		}
+
+		if (x.ri.bytes_deduped == 0) {
+			fprintf(stderr, "welp, deduped zero bytes?\n");
+			break;
+		}
+
+		off += x.ri.bytes_deduped;
 	}
-
-	if (x.ri.status == FILE_DEDUPE_RANGE_DIFFERS) {
-		fprintf(stderr, "welp, data differs\n");
-		return;
-	}
-
-	if (x.ri.status != FILE_DEDUPE_RANGE_SAME) {
-		fprintf(stderr, "FIDEDUPERANGE: %s\n", strerror(-x.ri.status));
-		return;
-	}
-
-	if (x.ri.bytes_deduped != leader->st_size)
-		fprintf(stderr, "welp, didn't dedupe a whole block\n");
 }
 
 static void close_inodes(struct iv_avl_tree *inodes)
