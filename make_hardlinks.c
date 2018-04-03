@@ -25,18 +25,23 @@
 #include <string.h>
 #include "hlsums_common.h"
 
+static int contents_only;
+
 static int inodes_linkable(const struct inode *a, const struct inode *b)
 {
 	if (a->st_dev != b->st_dev)
 		return 0;
-	if (a->st_mode != b->st_mode)
-		return 0;
-	if (a->st_uid != b->st_uid)
-		return 0;
-	if (a->st_gid != b->st_gid)
-		return 0;
 	if (a->st_size != b->st_size)
 		return 0;
+
+	if (!contents_only) {
+		if (a->st_mode != b->st_mode)
+			return 0;
+		if (a->st_uid != b->st_uid)
+			return 0;
+		if (a->st_gid != b->st_gid)
+			return 0;
+	}
 
 	return 1;
 }
@@ -65,6 +70,23 @@ static int better_leader(const struct inode *a, const struct inode *b)
 		return 1;
 	if (a->st_nlink < b->st_nlink)
 		return 0;
+
+	if (contents_only) {
+		if (a->st_mode < b->st_mode)
+			return 1;
+		if (a->st_mode > b->st_mode)
+			return 0;
+
+		if (a->st_uid < b->st_uid)
+			return 1;
+		if (a->st_uid > b->st_uid)
+			return 0;
+
+		if (a->st_gid < b->st_gid)
+			return 1;
+		if (a->st_gid > b->st_gid)
+			return 0;
+	}
 
 	if (a->st_ino < b->st_ino)
 		return 1;
@@ -118,8 +140,10 @@ static void do_link_inodes(struct inode *leader, struct inode *ino)
 	}
 }
 
-void link_inodes(struct iv_avl_tree *inodes, int *need_nl)
+void link_inodes(struct iv_avl_tree *inodes, int *need_nl, int _contents_only)
 {
+	contents_only = _contents_only;
+
 	segment_inodes(inodes, need_nl, "hl",
 		       inodes_linkable, better_leader, NULL, do_link_inodes);
 }

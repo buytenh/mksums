@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include "hlsums_common.h"
 
+static int contents_only;
 static int do_link;
 static int do_dedup;
 
@@ -34,7 +35,7 @@ static void process_inode_set(void *_need_nl, struct iv_avl_tree *inodes)
 	int *need_nl = _need_nl;
 
 	if (do_link)
-		link_inodes(inodes, need_nl);
+		link_inodes(inodes, need_nl, contents_only);
 
 	if (do_dedup)
 		dedup_inodes(inodes, need_nl);
@@ -94,6 +95,7 @@ static void free_hashes(struct iv_avl_tree *hashes)
 int main(int argc, char *argv[])
 {
 	static struct option long_options[] = {
+		{ "contents-only", no_argument, 0, 'c', },
 		{ "dedup", no_argument, 0, 'd', },
 		{ "link", no_argument, 0, 'l', },
 		{ 0, 0, 0, 0, },
@@ -104,11 +106,15 @@ int main(int argc, char *argv[])
 	while (1) {
 		int c;
 
-		c = getopt_long(argc, argv, "dl", long_options, NULL);
+		c = getopt_long(argc, argv, "cdl", long_options, NULL);
 		if (c == -1)
 			break;
 
 		switch (c) {
+		case 'c':
+			contents_only = 1;
+			break;
+
 		case 'd':
 			do_dedup = 1;
 			break;
@@ -126,7 +132,8 @@ int main(int argc, char *argv[])
 	}
 
 	if (argc == optind) {
-		fprintf(stderr, "%s: [--dedup] [--link] [sumfile]+\n", argv[0]);
+		fprintf(stderr, "%s: [--contents-only] [--dedup] [--link] "
+				"[sumfile]+\n", argv[0]);
 		return 1;
 	}
 

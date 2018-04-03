@@ -65,7 +65,7 @@ struct inode
 void dedup_inodes(struct iv_avl_tree *inodes, int *need_nl);
 
 /* make_hardlinks.c */
-void link_inodes(struct iv_avl_tree *inodes, int *need_nl);
+void link_inodes(struct iv_avl_tree *inodes, int *need_nl, int contents_only);
 
 /* read_sum_files.c */
 int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[]);
