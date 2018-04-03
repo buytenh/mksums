@@ -143,6 +143,19 @@ int main(int argc, char *argv[])
 		setrlimit(RLIMIT_STACK, &rlim);
 	}
 
+	if (getrlimit(RLIMIT_NOFILE, &rlim) < 0) {
+		perror("getrlimit");
+		return 1;
+	}
+
+	if (geteuid() == 0 && rlim.rlim_max < 1048576)
+		rlim.rlim_max = 1048576;
+
+	if (rlim.rlim_cur < rlim.rlim_max) {
+		rlim.rlim_cur = rlim.rlim_max;
+		setrlimit(RLIMIT_NOFILE, &rlim);
+	}
+
 	if (read_sum_files(&hashes, argc - optind, argv + optind))
 		return 1;
 
