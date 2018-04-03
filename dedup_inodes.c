@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "hlsums_common.h"
+#include "extents.h"
 
 #ifndef FIDEDUPERANGE
 #define FIDEDUPERANGE	_IOWR(0x94, 54, struct file_dedupe_range)
@@ -94,6 +95,12 @@ static void try_open_inodes(struct iv_avl_tree *inodes)
 				continue;
 			}
 
+			if (extent_tree_build(&ino->extents, fd)) {
+				extent_tree_free(&ino->extents);
+				close(fd);
+				continue;
+			}
+
 			ino->fd = fd;
 			break;
 		}
@@ -119,6 +126,12 @@ static int better_block_source(const struct inode *a, const struct inode *b)
 		return 1;
 
 	return 0;
+}
+
+static int can_pair(struct inode *leader, struct inode *ino)
+{
+	return extent_tree_diff(&leader->extents, 0,
+				&ino->extents, 0, leader->st_size);
 }
 
 static void do_dedup_inodes(struct inode *leader, struct inode *ino)
@@ -179,8 +192,10 @@ static void close_inodes(struct iv_avl_tree *inodes)
 		struct inode *ino;
 
 		ino = iv_container_of(an, struct inode, an);
-		if (ino->fd != -1)
+		if (ino->fd != -1) {
 			close(ino->fd);
+			extent_tree_free(&ino->extents);
+		}
 	}
 }
 
@@ -189,7 +204,7 @@ void dedup_inodes(struct iv_avl_tree *inodes, int *need_nl)
 	try_open_inodes(inodes);
 
 	segment_inodes(inodes, need_nl, "dd", inodes_dedupable,
-		       better_block_source, NULL, do_dedup_inodes);
+		       better_block_source, can_pair, do_dedup_inodes);
 
 	close_inodes(inodes);
 }

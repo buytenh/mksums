@@ -58,6 +58,7 @@ struct inode
 	/* for dedup_inodes() */
 	char			readonly;
 	int			fd;
+	struct iv_avl_tree	extents;
 };
 
 /* dedup_inodes.c */
