@@ -85,15 +85,17 @@ static void try_open_inodes(struct iv_avl_tree *inodes)
 				fd = open(d->name, O_RDONLY);
 			}
 
-			if (fd >= 0) {
-				ino->fd = fd;
-				break;
+			if (fd < 0) {
+				if (errno != EACCES) {
+					fprintf(stderr, "error opening %s: "
+							"%s\n", d->name,
+						strerror(errno));
+				}
+				continue;
 			}
 
-			if (errno != EACCES) {
-				fprintf(stderr, "error opening %s: %s\n",
-					d->name, strerror(errno));
-			}
+			ino->fd = fd;
+			break;
 		}
 	}
 }
