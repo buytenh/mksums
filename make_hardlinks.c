@@ -121,5 +121,5 @@ static void do_link_inodes(struct inode *leader, struct inode *ino)
 void link_inodes(struct iv_avl_tree *inodes, int *need_nl)
 {
 	segment_inodes(inodes, need_nl, "hl",
-		       inodes_linkable, better_leader, do_link_inodes);
+		       inodes_linkable, better_leader, NULL, do_link_inodes);
 }

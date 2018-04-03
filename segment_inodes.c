@@ -30,6 +30,7 @@ void segment_inodes(struct iv_avl_tree *inodes, int *need_nl, char *task,
 					const struct inode *b),
 		    int (*better_leader)(const struct inode *a,
 					 const struct inode *b),
+		    int (*can_pair)(struct inode *leader, struct inode *ino),
 		    void (*found_equiv)(struct inode *leader,
 					struct inode *ino))
 {
@@ -113,6 +114,9 @@ void segment_inodes(struct iv_avl_tree *inodes, int *need_nl, char *task,
 				continue;
 
 			ino->visited = 1;
+
+			if (can_pair != NULL && !can_pair(leader, ino))
+				continue;
 
 			if (!printed_leader) {
 				if (*need_nl) {

@@ -188,8 +188,8 @@ void dedup_inodes(struct iv_avl_tree *inodes, int *need_nl)
 {
 	try_open_inodes(inodes);
 
-	segment_inodes(inodes, need_nl, "dd",
-		       inodes_dedupable, better_block_source, do_dedup_inodes);
+	segment_inodes(inodes, need_nl, "dd", inodes_dedupable,
+		       better_block_source, NULL, do_dedup_inodes);
 
 	close_inodes(inodes);
 }
