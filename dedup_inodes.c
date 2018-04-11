@@ -111,6 +111,8 @@ static int inodes_dedupable(const struct inode *a, const struct inode *b)
 {
 	if (a->st_dev != b->st_dev)
 		return 0;
+	if (a->st_size != b->st_size)
+		return 0;
 
 	return 1;
 }
