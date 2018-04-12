@@ -109,6 +109,9 @@ static void try_open_inodes(struct iv_avl_tree *inodes)
 
 static int inodes_dedupable(const struct inode *a, const struct inode *b)
 {
+	if (a->fd == -1)
+		return 0;
+
 	if (a->st_dev != b->st_dev)
 		return 0;
 	if (a->st_size != b->st_size)
@@ -132,6 +135,9 @@ static int better_block_source(const struct inode *a, const struct inode *b)
 
 static int can_pair(struct inode *leader, struct inode *ino)
 {
+	if (leader->fd == -1)
+		return 0;
+
 	return extent_tree_diff(&leader->extents, 0,
 				&ino->extents, 0, leader->st_size);
 }
