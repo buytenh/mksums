@@ -66,9 +66,9 @@ static void try_open_inodes(struct iv_avl_tree *inodes)
 
 	iv_avl_tree_for_each (an, inodes) {
 		struct inode *ino;
+		struct iv_list_head *lh;
 
 		ino = iv_container_of(an, struct inode, an);
-		struct iv_list_head *lh;
 
 		ino->readonly = 0;
 		ino->fd = -1;
