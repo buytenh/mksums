@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <iv_avl.h>
 #include <iv_list.h>
+#include <obstack.h>
 #include <string.h>
 #include "hlsums_common.h"
 
@@ -114,14 +115,21 @@ struct hash_1ref
 	char			name[0];
 };
 
+#define obstack_chunk_alloc	malloc
+#define obstack_chunk_free	free
+
 int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[])
 {
 	struct iv_avl_tree hash_1ref;
+	struct obstack pool;
 	int i;
 
 	INIT_IV_AVL_TREE(dst, compare_hash);
 
 	INIT_IV_AVL_TREE(&hash_1ref, compare_hash);
+
+	obstack_init(&pool);
+	obstack_chunk_size(&pool) = 131072;
 
 	for (i = 0; i < num_files; i++) {
 		FILE *fp;
@@ -183,7 +191,7 @@ int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[])
 				continue;
 			}
 
-			h1 = alloca(sizeof(*h1) + len - 130 + 1);
+			h1 = obstack_alloc(&pool, sizeof(*h1) + len - 130 + 1);
 			if (h1 == NULL)
 				abort();
 
@@ -194,6 +202,8 @@ int read_sum_files(struct iv_avl_tree *dst, int num_files, char *file[])
 
 		fclose(fp);
 	}
+
+	obstack_free(&pool, NULL);
 
 	return 0;
 }
