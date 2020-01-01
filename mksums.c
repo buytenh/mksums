@@ -33,16 +33,6 @@ int main(int argc, char *argv[])
 	struct iv_list_head files;
 	int i;
 
-	if (getrlimit(RLIMIT_STACK, &rlim) < 0) {
-		perror("getrlimit(RLIMIT_STACK)");
-		return 1;
-	}
-
-	if (rlim.rlim_cur < 536870912 && 536870912 <= rlim.rlim_max) {
-		rlim.rlim_cur = 536870912;
-		setrlimit(RLIMIT_STACK, &rlim);
-	}
-
 	if (getrlimit(RLIMIT_NOFILE, &rlim) < 0) {
 		perror("getrlimit");
 		return 1;

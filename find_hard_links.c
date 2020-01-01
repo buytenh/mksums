@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <iv_avl.h>
 #include <iv_list.h>
+#include <obstack.h>
 #include "mksums_common.h"
 
 struct fh_ref
@@ -63,12 +64,19 @@ static struct fh_ref *find_ref(struct iv_avl_tree *tree, ino_t d_ino)
 	return NULL;
 }
 
+#define obstack_chunk_alloc	malloc
+#define obstack_chunk_free	free
+
 void find_hard_links(struct iv_list_head *files)
 {
 	struct iv_avl_tree fh_refs;
+	struct obstack pool;
 	struct iv_list_head *lh;
 
 	INIT_IV_AVL_TREE(&fh_refs, compare_fh_refs);
+
+	obstack_init(&pool);
+	obstack_chunk_size(&pool) = 131072;
 
 	iv_list_for_each (lh, files) {
 		struct file_to_hash *fh;
@@ -78,7 +86,10 @@ void find_hard_links(struct iv_list_head *files)
 
 		ref = find_ref(&fh_refs, fh->d_ino);
 		if (ref == NULL) {
-			ref = alloca(sizeof(*ref));
+			ref = obstack_alloc(&pool, sizeof(*ref));
+			if (ref == NULL)
+				abort();
+
 			ref->fh = fh;
 			iv_avl_tree_insert(&fh_refs, &ref->an);
 
@@ -88,4 +99,6 @@ void find_hard_links(struct iv_list_head *files)
 			fh->backref = ref->fh;
 		}
 	}
+
+	obstack_free(&pool, NULL);
 }
