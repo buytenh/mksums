@@ -22,7 +22,6 @@
 
 #include <dirent.h>
 #include <iv_list.h>
-#include <semaphore.h>
 #include <sys/types.h>
 
 struct dir
