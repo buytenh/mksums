@@ -1,6 +1,6 @@
 /*
  * mksums, a tool for hashing all files in a directory tree
- * Copyright (C) 2015, 2016 Lennert Buytenhek
+ * Copyright (C) 2015, 2016, 2023 Lennert Buytenhek
  *
  * This library is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License version
@@ -55,7 +55,7 @@ struct file_to_hash
 void find_hard_links(struct iv_list_head *files);
 
 /* hash_chain.c */
-void hash_chain(struct iv_list_head *files);
+void hash_chain(struct iv_list_head *files, int xattr_cache_hash);
 
 /* mksums_common.c */
 int openat_try_noatime(int dirfd, const char *pathname, int flags);
